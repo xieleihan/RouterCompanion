@@ -17,7 +17,7 @@ import androidx.core.view.ViewCompat;
 import androidx.core.view.WindowInsetsCompat;
 
 import com.example.myapplication.api.Request;
-import com.example.myapplication.ui.OpenwrtContainer;
+import com.example.myapplication.ui.KuaikanContainer;
 import com.example.myapplication.utils.LoadImageTask;
 import com.example.myapplication.utils.NetworkUtils;
 
@@ -91,7 +91,7 @@ public class MainActivity extends AppCompatActivity {
                 }
 
                 // 跳转到下一个页面
-                Intent intent = new Intent(MainActivity.this, OpenwrtContainer.class);
+                Intent intent = new Intent(MainActivity.this, KuaikanContainer.class);
                 startActivity(intent);
             }
         });
