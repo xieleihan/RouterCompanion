@@ -8,9 +8,5 @@ public class Request {
         return url;
     }
 
-    // 获取首页Banner
-    public static String getHomeBanner(){
-        String url = "https://apis.netstart.cn/bcomic/Banner";
-        return url;
-    }
+
 }

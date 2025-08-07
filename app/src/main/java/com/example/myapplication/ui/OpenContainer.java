@@ -12,7 +12,7 @@ import com.google.android.material.bottomnavigation.BottomNavigationView;
 import com.example.myapplication.ui.fragment.HomeFragment;
 import com.example.myapplication.ui.fragment.SettingsFragment;
 
-public class KuaikanContainer extends AppCompatActivity {
+public class OpenContainer extends AppCompatActivity {
 
     private BottomNavigationView bottomNavigationView;
     private static final String TAG = "OpenwrtContainer";
