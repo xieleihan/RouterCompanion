@@ -1,76 +1,14 @@
 <?xml version="1.0" encoding="utf-8"?>
-<LinearLayout
-    xmlns:android="http://schemas.android.com/apk/res/android"
-    xmlns:app="http://schemas.android.com/apk/res-auto"
+<FrameLayout xmlns:android="http://schemas.android.com/apk/res/android"
     xmlns:tools="http://schemas.android.com/tools"
+    android:id="@+id/main"
     android:layout_width="match_parent"
     android:layout_height="match_parent"
-    android:orientation="vertical"
-    android:gravity="center_horizontal"
-    android:id="@+id/root_layout"
-    android:scaleType="centerCrop"
     tools:context=".MainActivity">
 
-    <View
-        android:layout_width="0dp"
-        android:layout_height="0dp"
-        android:layout_weight="1" />
+    <WebView
+        android:id="@+id/webview"
+        android:layout_width="match_parent"
+        android:layout_height="match_parent" />
 
-    <ImageView
-        android:layout_width="150dp"
-        android:layout_height="150dp"
-        android:src="@drawable/peacock_flat"
-        android:layout_marginTop="64dp"
-        tools:ignore="MissingConstraints" />
-
-    <TextView
-        android:id="@+id/info_text"
-        android:layout_width="wrap_content"
-        android:layout_height="wrap_content"
-        android:text="链接到你的OpenWrt"
-        android:textSize="18sp"
-
-        android:layout_marginTop="24dp"
-        android:layout_marginBottom="32dp" />
-
-    <LinearLayout
-        android:layout_width="wrap_content"
-        android:layout_height="wrap_content"
-        android:orientation="vertical"
-
-        >
-
-        <EditText
-            android:id="@+id/input_openwrt_password"
-            style="@style/Widget.MaterialComponents.TextInputEditText.FilledBox"
-            android:layout_width="wrap_content"
-            android:layout_height="wrap_content"
-            android:hint="请输入Openwrt密码"
-            android:paddingHorizontal="20dp" />
-
-        <CheckBox
-            android:layout_width="wrap_content"
-            android:layout_height="wrap_content"
-            android:text="记住密码,下次自动登陆"
-            android:id="@+id/remember_password"
-            />
-    </LinearLayout>
-
-
-    <View
-        android:layout_width="0dp"
-        android:layout_height="0dp"
-        android:layout_weight="1" />
-
-    <Button
-        android:id="@+id/enter_button"
-        android:layout_width="wrap_content"
-        android:layout_height="wrap_content"
-        android:text="进入"
-        android:layout_marginStart="16dp"
-        android:layout_marginEnd="16dp"
-        android:layout_marginBottom="32dp"
-        android:gravity="center"
-        android:minHeight="48dp" />
-
-</LinearLayout>
+</FrameLayout>

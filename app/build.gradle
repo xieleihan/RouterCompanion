@@ -3,13 +3,13 @@ plugins {
 }
 
 android {
-    namespace 'com.example.myapplication'
-    compileSdk 35
+    namespace 'com.southaki.gamemarket'
+    compileSdk 36
 
     defaultConfig {
-        applicationId "com.example.myapplication"
+        applicationId "com.southaki.gamemarket"
         minSdk 24
-        targetSdk 35
+        targetSdk 36
         versionCode 1
         versionName "1.0"
 
@@ -37,5 +37,4 @@ dependencies {
     testImplementation libs.junit
     androidTestImplementation libs.ext.junit
     androidTestImplementation libs.espresso.core
-
 }
