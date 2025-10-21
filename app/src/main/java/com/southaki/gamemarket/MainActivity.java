@@ -16,6 +16,8 @@ import androidx.core.view.WindowInsetsCompat;
 
 import com.southaki.gamemarket.network.DnsCache;
 import com.southaki.gamemarket.network.DnsResolver;
+import com.southaki.gamemarket.web.CachedWebViewClient;
+import com.southaki.gamemarket.web.ResourceCache;
 
 public class MainActivity extends AppCompatActivity {
 
@@ -27,6 +29,8 @@ public class MainActivity extends AppCompatActivity {
     private SharedPreferences sharedPreferences;
     private DnsCache dnsCache;
     private DnsResolver dnsResolver;
+    private ResourceCache resourceCache;
+    private CachedWebViewClient cachedWebViewClient;
 
     @Override
     protected void onCreate(Bundle savedInstanceState) {
@@ -37,6 +41,9 @@ public class MainActivity extends AppCompatActivity {
         // 初始化 SharedPreferences
         sharedPreferences = getSharedPreferences(PREFS_NAME, MODE_PRIVATE);
 
+        // 初始化资源缓存管理器
+        resourceCache = new ResourceCache(this);
+
         // 初始化 DNS 缓存
         dnsCache = DnsCache.getInstance(this);
         dnsResolver = new DnsResolver(this);
@@ -44,25 +51,45 @@ public class MainActivity extends AppCompatActivity {
         // 预加载常用域名 DNS
         preloadDns();
 
-        // 初始化 WebView
-        webView = findViewById(R.id.webview);
-        webView.setWebViewClient(new WebViewClient() {
-            @Override
-            public void onPageFinished(WebView view, String url) {
-                super.onPageFinished(view, url);
-                // 保存当前页面URL
-                saveCurrentUrl(url);
-            }
+        // 初始化 WebView - 尝试使用预热的 WebView
+        initializeWebView();
 
-            @Override
-            public void onReceivedError(WebView view, int errorCode, String description, String failingUrl) {
-                super.onReceivedError(view, errorCode, description, failingUrl);
-                Toast.makeText(MainActivity.this, "加载失败: " + description, Toast.LENGTH_SHORT).show();
-            }
+        ViewCompat.setOnApplyWindowInsetsListener(findViewById(R.id.main), (v, insets) -> {
+            Insets systemBars = insets.getInsets(WindowInsetsCompat.Type.systemBars());
+            v.setPadding(systemBars.left, systemBars.top, systemBars.right, systemBars.bottom);
+            return insets;
+        });
+    }
+
+    /**
+     * 初始化 WebView
+     * 优先使用预热的 WebView，否则创建新实例
+     */
+    private void initializeWebView() {
+        webView = findViewById(R.id.webview);
+
+        // 尝试使用预热的 WebView（如果可用）
+        WebView warmupWebView = MyApplication.getWarmupWebView();
+        if (warmupWebView != null && warmupWebView.getParent() == null) {
+            // 将预热的 WebView 附加到布局
+            ((android.widget.FrameLayout) webView.getParent()).removeView(webView);
+            ((android.widget.FrameLayout) webView.getParent()).addView(warmupWebView);
+            webView = warmupWebView;
+        } else {
+            // 如果预热 WebView 不可用，配置当前 WebView
+            configureWebViewSettings();
+        }
+
+        // 创建缓存 WebViewClient 并设置
+        cachedWebViewClient = new CachedWebViewClient(this, resourceCache);
+
+        // 设置页面完成监听器
+        cachedWebViewClient.setOnPageFinishedListener((view, url) -> {
+            // 保存当前页面URL
+            saveCurrentUrl(url);
         });
 
-        // 配置 WebView 设置
-        configureWebViewSettings();
+        webView.setWebViewClient(cachedWebViewClient);
 
         // 恢复上次访问的页面或加载默认页面
         String lastUrl = getLastUrl();
@@ -71,12 +98,6 @@ public class MainActivity extends AppCompatActivity {
         } else {
             webView.loadUrl("http://game.localtest.echoing.cc:61007/");
         }
-
-        ViewCompat.setOnApplyWindowInsetsListener(findViewById(R.id.main), (v, insets) -> {
-            Insets systemBars = insets.getInsets(WindowInsetsCompat.Type.systemBars());
-            v.setPadding(systemBars.left, systemBars.top, systemBars.right, systemBars.bottom);
-            return insets;
-        });
     }
 
     /**
@@ -201,5 +222,7 @@ public class MainActivity extends AppCompatActivity {
             webView.destroy();
             webView = null;
         }
+        // 释放预热的 WebView
+        MyApplication.releaseWarmupWebView();
     }
 }
