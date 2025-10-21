@@ -14,6 +14,9 @@ import androidx.core.graphics.Insets;
 import androidx.core.view.ViewCompat;
 import androidx.core.view.WindowInsetsCompat;
 
+import com.southaki.gamemarket.network.DnsCache;
+import com.southaki.gamemarket.network.DnsResolver;
+
 public class MainActivity extends AppCompatActivity {
 
     private WebView webView;
@@ -22,6 +25,8 @@ public class MainActivity extends AppCompatActivity {
     private static final String PREFS_NAME = "WebViewPrefs";
     private static final String KEY_LAST_URL = "lastUrl";
     private SharedPreferences sharedPreferences;
+    private DnsCache dnsCache;
+    private DnsResolver dnsResolver;
 
     @Override
     protected void onCreate(Bundle savedInstanceState) {
@@ -32,6 +37,13 @@ public class MainActivity extends AppCompatActivity {
         // 初始化 SharedPreferences
         sharedPreferences = getSharedPreferences(PREFS_NAME, MODE_PRIVATE);
 
+        // 初始化 DNS 缓存
+        dnsCache = DnsCache.getInstance(this);
+        dnsResolver = new DnsResolver(this);
+
+        // 预加载常用域名 DNS
+        preloadDns();
+
         // 初始化 WebView
         webView = findViewById(R.id.webview);
         webView.setWebViewClient(new WebViewClient() {
@@ -41,26 +53,16 @@ public class MainActivity extends AppCompatActivity {
                 // 保存当前页面URL
                 saveCurrentUrl(url);
             }
+
+            @Override
+            public void onReceivedError(WebView view, int errorCode, String description, String failingUrl) {
+                super.onReceivedError(view, errorCode, description, failingUrl);
+                Toast.makeText(MainActivity.this, "加载失败: " + description, Toast.LENGTH_SHORT).show();
+            }
         });
 
         // 配置 WebView 设置
-        WebSettings webSettings = webView.getSettings();
-        webSettings.setJavaScriptEnabled(true); // 启用JavaScript
-        webSettings.setDomStorageEnabled(true); // 启用DOM存储
-        webSettings.setLoadWithOverviewMode(true); // 缩放至屏幕的大小
-        webSettings.setUseWideViewPort(true); // 将图片调整到适合webview的大小
-
-        // 启用数据库存储
-        webSettings.setDatabaseEnabled(true);
-        // 设置缓存模式 - 使用默认缓存策略
-        webSettings.setCacheMode(WebSettings.LOAD_DEFAULT);
-        // 允许文件访问
-        webSettings.setAllowFileAccess(true);
-
-        // 启用Cookie持久化
-        CookieManager cookieManager = CookieManager.getInstance();
-        cookieManager.setAcceptCookie(true);
-        cookieManager.setAcceptThirdPartyCookies(webView, true);
+        configureWebViewSettings();
 
         // 恢复上次访问的页面或加载默认页面
         String lastUrl = getLastUrl();
@@ -75,6 +77,49 @@ public class MainActivity extends AppCompatActivity {
             v.setPadding(systemBars.left, systemBars.top, systemBars.right, systemBars.bottom);
             return insets;
         });
+    }
+
+    /**
+     * 预加载常用域名的 DNS 缓存
+     */
+    private void preloadDns() {
+        String[] commonHosts = {
+                "game.localtest.echoing.cc", // 测试域名
+        };
+
+        for (String host : commonHosts) {
+            dnsResolver.resolveDns(host, new DnsResolver.OnDnsResolveListener() {
+                @Override
+                public void onSuccess(String ipAddress) {
+                    // DNS 已缓存
+                }
+
+                @Override
+                public void onFailed(Exception e) {
+                    e.printStackTrace();
+                }
+            });
+        }
+    }
+
+    /**
+     * 配置 WebView 设置
+     */
+    private void configureWebViewSettings() {
+        WebSettings webSettings = webView.getSettings();
+        webSettings.setJavaScriptEnabled(true);
+        webSettings.setDomStorageEnabled(true);
+        webSettings.setLoadWithOverviewMode(true);
+        webSettings.setUseWideViewPort(true);
+        webSettings.setDatabaseEnabled(true);
+        webSettings.setCacheMode(WebSettings.LOAD_DEFAULT);
+        webSettings.setAllowFileAccess(false);
+        webSettings.setAllowContentAccess(false);
+        webSettings.setAllowUniversalAccessFromFileURLs(false);
+
+        CookieManager cookieManager = CookieManager.getInstance();
+        cookieManager.setAcceptCookie(true);
+        cookieManager.setAcceptThirdPartyCookies(webView, false);
     }
 
     @Override
@@ -151,6 +196,10 @@ public class MainActivity extends AppCompatActivity {
             if (currentUrl != null) {
                 saveCurrentUrl(currentUrl);
             }
+            webView.stopLoading();
+            webView.removeAllViews();
+            webView.destroy();
+            webView = null;
         }
     }
 }
