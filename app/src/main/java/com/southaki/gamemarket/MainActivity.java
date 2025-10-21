@@ -67,7 +67,7 @@ public class MainActivity extends AppCompatActivity {
         if (lastUrl != null && !lastUrl.isEmpty()) {
             webView.loadUrl(lastUrl);
         } else {
-            webView.loadUrl("http://game.localtest.echoing.cc:61007/login");
+            webView.loadUrl("http://game.localtest.echoing.cc:61007/");
         }
 
         ViewCompat.setOnApplyWindowInsetsListener(findViewById(R.id.main), (v, insets) -> {
