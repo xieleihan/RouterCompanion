@@ -4,6 +4,7 @@ import android.app.Application;
 import android.webkit.WebSettings;
 import android.webkit.WebView;
 
+import com.southaki.gamemarket.BuildConfig;
 import com.southaki.gamemarket.web.WebViewCacheManager;
 
 /**
