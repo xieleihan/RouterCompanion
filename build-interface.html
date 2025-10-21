@@ -1,0 +1,325 @@
+<!DOCTYPE html>
+<html lang="zh-CN">
+
+<head>
+    <meta charset="UTF-8">
+    <meta
+        name="viewport"
+        content="width=device-width, initial-scale=1.0"
+    >
+    <title>RouterCompanion APK 构建器</title>
+    <style>
+        body {
+            font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', 'Roboto', sans-serif;
+            max-width: 600px;
+            margin: 50px auto;
+            padding: 20px;
+            background-color: #f5f5f5;
+        }
+
+        .container {
+            background: white;
+            padding: 30px;
+            border-radius: 10px;
+            box-shadow: 0 2px 10px rgba(0, 0, 0, 0.1);
+        }
+
+        h1 {
+            color: #333;
+            text-align: center;
+            margin-bottom: 30px;
+        }
+
+        .form-group {
+            margin-bottom: 20px;
+        }
+
+        label {
+            display: block;
+            margin-bottom: 5px;
+            font-weight: 500;
+            color: #555;
+        }
+
+        input[type="text"],
+        input[type="url"] {
+            width: 100%;
+            padding: 12px;
+            border: 2px solid #ddd;
+            border-radius: 5px;
+            font-size: 16px;
+            box-sizing: border-box;
+        }
+
+        input:focus {
+            outline: none;
+            border-color: #4CAF50;
+        }
+
+        .btn {
+            background-color: #4CAF50;
+            color: white;
+            padding: 12px 24px;
+            border: none;
+            border-radius: 5px;
+            cursor: pointer;
+            font-size: 16px;
+            width: 100%;
+            margin-top: 10px;
+        }
+
+        .btn:hover {
+            background-color: #45a049;
+        }
+
+        .btn:disabled {
+            background-color: #ccc;
+            cursor: not-allowed;
+        }
+
+        .status {
+            margin-top: 20px;
+            padding: 15px;
+            border-radius: 5px;
+            display: none;
+        }
+
+        .status.success {
+            background-color: #d4edda;
+            color: #155724;
+            border: 1px solid #c3e6cb;
+        }
+
+        .status.error {
+            background-color: #f8d7da;
+            color: #721c24;
+            border: 1px solid #f5c6cb;
+        }
+
+        .status.loading {
+            background-color: #d1ecf1;
+            color: #0c5460;
+            border: 1px solid #bee5eb;
+        }
+
+        .example {
+            font-size: 14px;
+            color: #666;
+            margin-top: 5px;
+        }
+
+        .recent-builds {
+            margin-top: 30px;
+            border-top: 1px solid #eee;
+            padding-top: 20px;
+        }
+
+        .build-item {
+            background: #f8f9fa;
+            padding: 10px;
+            margin: 5px 0;
+            border-radius: 5px;
+            border-left: 4px solid #4CAF50;
+        }
+    </style>
+</head>
+
+<body>
+    <div class="container">
+        <h1>🚀 RouterCompanion APK 构建器</h1>
+
+        <form id="buildForm">
+            <div class="form-group">
+                <label for="domain">目标域名:</label>
+                <input
+                    type="url"
+                    id="domain"
+                    name="domain"
+                    required
+                    placeholder="请输入完整的URL地址"
+                    value="http://game.localtest.echoing.cc:61007/login"
+                >
+                <div class="example">
+                    例如: https://example.com/login 或 http://192.168.1.1:8080/app
+                </div>
+            </div>
+
+            <div class="form-group">
+                <label for="token">GitHub Token:</label>
+                <input
+                    type="text"
+                    id="token"
+                    name="token"
+                    required
+                    placeholder="请输入您的GitHub Personal Access Token"
+                >
+                <div class="example">
+                    需要有 repo 权限的 GitHub Personal Access Token<br>
+                    创建方式: GitHub → Settings → Developer settings → Personal access tokens
+                </div>
+            </div>
+
+            <button
+                type="submit"
+                class="btn"
+                id="buildBtn"
+            >🔨 开始构建 APK</button>
+        </form>
+
+        <div
+            id="status"
+            class="status"
+        ></div>
+
+        <div class="recent-builds">
+            <h3>📊 构建历史</h3>
+            <div id="buildHistory"></div>
+        </div>
+    </div>
+
+    <script>
+        const GITHUB_OWNER = 'xieleihan';  // 替换为您的GitHub用户名
+        const GITHUB_REPO = 'RouterCompanion';   // 替换为您的仓库名
+
+        // 加载保存的token
+        document.addEventListener('DOMContentLoaded', function () {
+            const savedToken = localStorage.getItem('github_token');
+            if (savedToken) {
+                document.getElementById('token').value = savedToken;
+            }
+            loadBuildHistory();
+        });
+
+        document.getElementById('buildForm').addEventListener('submit', async function (e) {
+            e.preventDefault();
+
+            const domain = document.getElementById('domain').value;
+            const token = document.getElementById('token').value;
+            const statusDiv = document.getElementById('status');
+            const buildBtn = document.getElementById('buildBtn');
+
+            // 保存token到本地存储
+            localStorage.setItem('github_token', token);
+
+            // 显示加载状态
+            buildBtn.disabled = true;
+            buildBtn.textContent = '🔄 构建中...';
+            statusDiv.className = 'status loading';
+            statusDiv.style.display = 'block';
+            statusDiv.innerHTML = `
+                <strong>🚀 正在启动构建...</strong><br>
+                目标域名: ${domain}<br>
+                <div style="margin-top: 10px;">
+                    <div>⏳ 发送构建请求...</div>
+                </div>
+            `;
+
+            try {
+                // 触发GitHub Actions
+                const response = await fetch(`https://api.github.com/repos/${GITHUB_OWNER}/${GITHUB_REPO}/dispatches`, {
+                    method: 'POST',
+                    headers: {
+                        'Authorization': `token ${token}`,
+                        'Accept': 'application/vnd.github.v3+json',
+                        'Content-Type': 'application/json'
+                    },
+                    body: JSON.stringify({
+                        event_type: 'build-with-domain',
+                        client_payload: {
+                            domain: domain
+                        }
+                    })
+                });
+
+                if (response.ok) {
+                    statusDiv.className = 'status success';
+                    statusDiv.innerHTML = `
+                        <strong>✅ 构建请求已发送成功!</strong><br>
+                        目标域名: ${domain}<br>
+                        <div style="margin-top: 10px;">
+                            <div>🔄 GitHub Actions 正在构建中...</div>
+                            <div>📦 构建完成后将自动发布到 Releases</div>
+                            <div style="margin-top: 10px;">
+                                <a href="https://github.com/${GITHUB_OWNER}/${GITHUB_REPO}/actions" target="_blank" style="color: #0366d6;">
+                                    🔗 查看构建进度
+                                </a>
+                                |
+                                <a href="https://github.com/${GITHUB_OWNER}/${GITHUB_REPO}/releases" target="_blank" style="color: #0366d6;">
+                                    📋 查看发布列表
+                                </a>
+                            </div>
+                        </div>
+                    `;
+
+                    // 添加到构建历史
+                    addToBuildHistory(domain);
+
+                } else {
+                    throw new Error(`HTTP ${response.status}: ${await response.text()}`);
+                }
+
+            } catch (error) {
+                console.error('构建请求失败:', error);
+                statusDiv.className = 'status error';
+                statusDiv.innerHTML = `
+                    <strong>❌ 构建请求失败</strong><br>
+                    错误信息: ${error.message}<br>
+                    <div style="margin-top: 10px;">
+                        <div>🔍 请检查:</div>
+                        <div>• GitHub Token 是否正确且有 repo 权限</div>
+                        <div>• 网络连接是否正常</div>
+                        <div>• 仓库名称是否正确</div>
+                    </div>
+                `;
+            } finally {
+                buildBtn.disabled = false;
+                buildBtn.textContent = '🔨 开始构建 APK';
+            }
+        });
+
+        function addToBuildHistory(domain) {
+            let history = JSON.parse(localStorage.getItem('build_history') || '[]');
+            const now = new Date();
+            history.unshift({
+                domain: domain,
+                timestamp: now.toISOString(),
+                displayTime: now.toLocaleString('zh-CN')
+            });
+
+            // 只保留最近10条记录
+            history = history.slice(0, 10);
+            localStorage.setItem('build_history', JSON.stringify(history));
+            loadBuildHistory();
+        }
+
+        function loadBuildHistory() {
+            const history = JSON.parse(localStorage.getItem('build_history') || '[]');
+            const historyDiv = document.getElementById('buildHistory');
+
+            if (history.length === 0) {
+                historyDiv.innerHTML = '<div style="color: #666; text-align: center;">暂无构建历史</div>';
+                return;
+            }
+
+            historyDiv.innerHTML = history.map((item, index) => `
+                <div class="build-item">
+                    <strong>构建 #${history.length - index}</strong><br>
+                    🌐 域名: ${item.domain}<br>
+                    🕐 时间: ${item.displayTime}
+                </div>
+            `).join('');
+        }
+
+        // 自动验证URL格式
+        document.getElementById('domain').addEventListener('input', function (e) {
+            const url = e.target.value;
+            if (url && !url.match(/^https?:\/\/.+/)) {
+                e.target.setCustomValidity('请输入完整的URL，包含 http:// 或 https://');
+            } else {
+                e.target.setCustomValidity('');
+            }
+        });
+    </script>
+</body>
+
+</html>

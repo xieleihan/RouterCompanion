@@ -1,3 +1,4 @@
+# Gradle files
 *.iml
 .gradle
 /local.properties
@@ -13,3 +14,25 @@
 .externalNativeBuild
 .cxx
 local.properties
+
+# Node.js (for build server)
+node_modules/
+npm-debug.log*
+yarn-debug.log*
+yarn-error.log*
+.env
+
+# Build artifacts
+*.apk
+*.aab
+*.dex
+*.class
+
+# Temporary files
+*.tmp
+*.temp
+response.tmp
+temp_payload.json
+
+# Sensitive data
+github_token.txt

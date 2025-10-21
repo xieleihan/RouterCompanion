@@ -1,0 +1,130 @@
+name: Build APK with Custom Domain
+
+on:
+    repository_dispatch:
+        types: [build-with-domain]
+    workflow_dispatch:
+        inputs:
+            domain:
+                description: "Custom domain for webView"
+                required: true
+                type: string
+                default: "http://game.localtest.echoing.cc:61007/login"
+
+jobs:
+    build:
+        runs-on: ubuntu-latest
+
+        steps:
+            - name: Checkout source
+              uses: actions/checkout@v4
+              with:
+                  token: ${{ secrets.GITHUB_TOKEN }}
+
+            - name: Set up JDK 17
+              uses: actions/setup-java@v4
+              with:
+                  distribution: "temurin"
+                  java-version: "17"
+
+            - name: Set up Android SDK
+              uses: android-actions/setup-android@v3
+
+            - name: Get version number
+              id: version
+              run: |
+                  # 读取当前版本号，如果文件不存在则从1开始
+                  if [ -f "version.txt" ]; then
+                    CURRENT_VERSION=$(cat version.txt)
+                  else
+                    CURRENT_VERSION=0
+                  fi
+                  NEW_VERSION=$((CURRENT_VERSION + 1))
+                  echo "version=$NEW_VERSION" >> $GITHUB_OUTPUT
+                  echo $NEW_VERSION > version.txt
+                  echo "当前版本号: $NEW_VERSION"
+
+            - name: Update domain in MainActivity
+              run: |
+                  DOMAIN="${{ github.event.client_payload.domain || github.event.inputs.domain }}"
+                  echo "更新域名为: $DOMAIN"
+
+                  # 备份原文件
+                  cp app/src/main/java/com/southaki/gamemarket/MainActivity.java MainActivity.java.backup
+
+                  # 使用sed替换域名
+                  sed -i 's|webView\.loadUrl("[^"]*");|webView.loadUrl("'"$DOMAIN"'");|g' app/src/main/java/com/southaki/gamemarket/MainActivity.java
+
+                  # 验证修改
+                  echo "修改后的loadUrl行："
+                  grep "webView.loadUrl" app/src/main/java/com/southaki/gamemarket/MainActivity.java
+
+            - name: Grant Gradle permissions
+              run: chmod +x ./gradlew
+
+            - name: Build Debug APK
+              run: ./gradlew assembleDebug
+
+            - name: Generate release info
+              id: release_info
+              run: |
+                  DATE=$(date +"%Y%m%d")
+                  DOMAIN="${{ github.event.client_payload.domain || github.event.inputs.domain }}"
+                  # 提取域名的主机部分作为标识
+                  DOMAIN_CLEAN=$(echo "$DOMAIN" | sed 's|http[s]*://||g' | sed 's|/.*||g' | sed 's|:.*||g')
+                  HASH=$(echo "$DOMAIN" | sha256sum | cut -c1-8)
+                  VERSION="${{ steps.version.outputs.version }}"
+
+                  RELEASE_TITLE="apk-${DATE}-${DOMAIN_CLEAN}-${HASH}-v${VERSION}"
+                  APK_NAME="app-${DOMAIN_CLEAN}-v${VERSION}.apk"
+
+                  echo "release_title=$RELEASE_TITLE" >> $GITHUB_OUTPUT
+                  echo "apk_name=$APK_NAME" >> $GITHUB_OUTPUT
+                  echo "domain_clean=$DOMAIN_CLEAN" >> $GITHUB_OUTPUT
+
+                  echo "发布标题: $RELEASE_TITLE"
+                  echo "APK名称: $APK_NAME"
+
+            - name: Rename APK
+              run: |
+                  mv app/build/outputs/apk/debug/app-debug.apk app/build/outputs/apk/debug/${{ steps.release_info.outputs.apk_name }}
+
+            - name: Commit version update
+              run: |
+                  git config --local user.email "action@github.com"
+                  git config --local user.name "GitHub Action"
+                  git add version.txt
+                  git commit -m "Update version to ${{ steps.version.outputs.version }}" || exit 0
+
+            - name: Push changes
+              uses: ad-m/github-push-action@master
+              with:
+                  github_token: ${{ secrets.GITHUB_TOKEN }}
+                  branch: main
+
+            - name: Create GitHub Release
+              uses: softprops/action-gh-release@v2
+              with:
+                  name: "${{ steps.release_info.outputs.release_title }}"
+                  tag_name: "v${{ steps.version.outputs.version }}"
+                  body: |
+                      🚀 **自动构建发布**
+
+                      📅 **构建日期**: $(date +"%Y-%m-%d %H:%M:%S")
+                      🌐 **目标域名**: ${{ github.event.client_payload.domain || github.event.inputs.domain }}
+                      🏷️ **版本号**: v${{ steps.version.outputs.version }}
+                      🔖 **域名标识**: ${{ steps.release_info.outputs.domain_clean }}
+
+                      ---
+
+                      这是通过API自动构建的APK，已配置为访问指定的域名。
+
+                  files: app/build/outputs/apk/debug/${{ steps.release_info.outputs.apk_name }}
+              env:
+                  GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+
+            - name: Upload APK as Artifact
+              uses: actions/upload-artifact@v4
+              with:
+                  name: ${{ steps.release_info.outputs.apk_name }}
+                  path: app/build/outputs/apk/debug/${{ steps.release_info.outputs.apk_name }}
